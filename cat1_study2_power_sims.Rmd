@@ -1,0 +1,182 @@
+---
+title: "Simulatioins"
+output: html_notebook
+---
+
+```{r, echo=FALSE}
+#library(tidyverse)
+library(tidybayes)
+library(brms)
+library(posterior)
+library(dplyr)
+library(purrr)
+library(tidyr)
+```
+
+The following are convenience functions
+
+```{r, include= TRUE, echo=FALSE}
+#Extract HDI from a model fit
+get_hdi <- function(fit) {
+  
+  fit %>% 
+    as_draws_df() %>% 
+    transmute(hen = inv_logit_scaled(b_conditionhen),
+              han = inv_logit_scaled(b_conditionhan)) %>% 
+    mutate(diff = hen-han) %>% 
+    # yields the highest-density *continuous* interval
+    mode_hdci() %>% 
+    select(contains(".lower")|contains(".upper")) 
+  
+}
+
+#Extract BF from a model fit
+get_bf <- function(fit) {
+ h <- hypothesis(fit, "conditionhen > conditionhan ")
+ tibble( bf10 = h$hypothesis$Evid.Ratio )
+  
+}
+
+fit_then_hdis <- function(data, seed) {
+    
+    fit <- update(fit_sim_pop, 
+                  newdata = data, 
+                  seed = seed)
+    
+    get_hdi(fit)
+  }
+
+#simulate a single experiment from a set of population parameters
+sample_data <- function(seed, n_subj, n_trial){
+    if(n_subj<2){
+      stop("For arbitrary reasons, two is the smallest number of subjects")
+    }
+    set.seed(seed)
+    bind_cols(s = 1:(n_subj),
+              sample_n(f, size = n_subj/2, replace = T) %>% 
+                pivot_longer(1:2, names_to = "condition", values_to = "theta")) %>% 
+      mutate(y = lapply(theta, rbinom, n = n_trial, size = 1)) %>% 
+      unnest(y)
+    
+  }
+
+```
+
+Create a function to sample data from the "population"
+
+```{r}
+
+n_subj = 10
+n_trial = 5
+n_sim = 5
+power_calculator <- function(model, n_subj, n_trial = 30, n_sim = 100 ) {
+ # Begin by simulating a population based on an existing dataset
+   f <- 
+    fitted(model,
+           newdata = tibble(id = 0, 
+                            condition = c("han", "hen"), 
+                            essentialism_s = 0,
+                            face = ""),
+           allow_new_levels = T,
+           summary = F) %>% 
+    data.frame() %>% 
+    set_names(c("han", "hen"))
+
+#Then sample values from that dataset, simulating running a single experiment
+#Run the analyses on the newly created dataset
+  fit_sim_pop <-
+    brm(data = sample_data(1, n_subj, n_trial),
+        family = bernoulli(link = logit),
+        y ~ 0 + condition + (1 | s),
+        prior = c(prior(normal(0, 1.5), class = b),
+                  prior(cauchy(0, 1), class = sd)),
+        iter = 3000, warmup = 1000, chains = 4, cores = 4,
+        seed = 13,
+        control = list(adapt_delta = .9)
+    )
+
+#Repeat the proces many times
+  sims <-
+    tibble(seed = 1:n_sim) %>% 
+    mutate(data = map(seed, sample_data, n_subj = n_subj, n_trial = n_trial)) %>% 
+    mutate(hdi = map2(data, seed, fit_then_hdis))
+
+#Determine how often the study targets were observed
+  sim_out <- sims %>% 
+    unnest(hdi) %>% 
+    # here we determine whether we passed at the group level
+    mutate(pass_rope_diff = diff.lower < -0.1 & diff.upper > 0.1,
+           pass_width_diff = (diff.upper -diff.lower) < .5,
+           pass_rope_han = han.lower > -0.1 | han.upper < 0.1,
+           pass_width_han = (han.upper -han.lower) < .2,
+           pass_width_hen = (hen.upper -hen.lower) < .5) 
+return(sim_out)  
+#
+
+}
+
+
+```
+
+Running the simulation
+
+```{r Running sims, eval=FALSE, include=FALSE}
+power_50 <- power_calculator(fit_multilevel_alt_m1,  n_subj = 50)
+power_100 <- power_calculator(fit_multilevel_alt_m1, n_subj = 100)
+power_150 <- power_calculator(cat_multilevel_alt_m1, n_subj = 150)
+power_200 <- power_calculator(fit_multilevel_alt_m1, n_subj = 200)
+power_250 <- power_calculator(fit_multilevel_alt_m1, n_subj = 250)
+
+saveRDS(power_50, "sims/power50")
+  
+
+```
+
+```{r}
+
+get_outs <- function(data) {
+  outs <- tibble(
+              "N" = as.numeric(tail(data[[2]][[1]][,1], 1)), 
+              "Power" = sum(data[, "pass_width_diff"])/100)
+  return(outs)
+}
+
+powers
+
+get_outs(p2)
+
+powers <- tibble(
+              "N"= NA,
+              "Power" = NA)
+
+sims <- list(p2, power_50)
+
+for (i in sims){
+  tmp <- get_outs(i)
+  powers <- rbind(powers, tmp)
+}
+
+powers
+
+
+```
+
+```{r turning this into a table}
+# Load libraries
+library(knitr)
+library(kableExtra)
+library(papaja)
+library(flextable)
+
+apa_table(
+  powers,
+  escape = TRUE,
+  col.names = c("N", "Power"),
+  align = c("l", "c"),
+  caption = "Estimated power based on N participants"
+  )
+
+flextable(powers) %>% 
+  set_caption("Estimated power based on N participants")
+  
+```
