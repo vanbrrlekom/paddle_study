@@ -155,8 +155,8 @@ The last step in the process involves carrying this out over a number of potenti
 ```{r Running sims, eval=FALSE, include=FALSE}
 
 power_50 <- power_calculator(fit_prior_data, n_sim = 500,  n_subj = 50,  filename = "sims/power50.rds")
-#power_100 <- power_calculator(fit_prior_data, n_subj = 100, filename = "sims/power100.rds")
-#power_150 <- power_calculator(fit_prior_data, n_subj = 150, filename = "sims/power150.rds")
+power_100 <- power_calculator(fit_prior_data,n_sim = 500, n_subj = 100, filename = "sims/power100.rds")
+power_150 <- power_calculator(fit_prior_data, n_sim = 500, n_subj = 150, filename = "sims/power150.rds")
 #power_200 <- power_calculator(fit_prior_data, n_subj = 200, filename = "sims/power200.rds")
 #power_220 <- power_calculator(fit_prior_data, n_subj = 220, filename = "sims/power220.rds")
 #power_250 <- power_calculator(fit_prior_data, n_subj = 250, filename = "sims/power250.rds")
