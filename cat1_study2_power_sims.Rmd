@@ -1,9 +1,9 @@
 ---
-title: "Simulatioins"
+title: "Simulations"
 output: html_notebook
 ---
 
-```{r, echo=FALSE}
+```{r include=FALSE}
 #library(tidyverse)
 library(tidybayes)
 library(brms)
@@ -11,66 +11,76 @@ library(posterior)
 library(dplyr)
 library(purrr)
 library(tidyr)
+source("src/functions.r")
 ```
 
-The following are convenience functions
+### How to use this document
 
-```{r, include= TRUE, echo=FALSE}
-#Extract HDI from a model fit
-get_hdi <- function(fit) {
-  
-  fit %>% 
-    as_draws_df() %>% 
-    transmute(hen = inv_logit_scaled(b_conditionhen),
-              han = inv_logit_scaled(b_conditionhan)) %>% 
-    mutate(diff = hen-han) %>% 
-    # yields the highest-density *continuous* interval
-    mode_hdci() %>% 
-    select(contains(".lower")|contains(".upper")) 
-  
-}
+This is a supplemental document to the preregistration "Can gender-neutral pronouns (e.g., Swedish “hen”) facilitate gender categorization beyond the binary of women and men?". There are two version of this document: an html file and a markdown. The html file contains an easily redable printout of the code while the markdown document can be run in R and Rstudio to reproduce the simulations described below. My aim is to make this document at accessible to users with no R experience, even if the code is not always legible. To reproduce the analyses, I recommend downloading the folder "OSF folder to be named" and opening the R project "R project" followed by the markdown file "Markdown file".
 
-#Extract BF from a model fit
-get_bf <- function(fit) {
- h <- hypothesis(fit, "conditionhen > conditionhan ")
- tibble( bf10 = h$hypothesis$Evid.Ratio )
-  
-}
 
-fit_then_hdis <- function(data, seed) {
-    
-    fit <- update(fit_sim_pop, 
-                  newdata = data, 
-                  seed = seed)
-    
-    get_hdi(fit)
-  }
+### Approach
 
-#simulate a single experiment from a set of population parameters
-sample_data <- function(seed, n_subj, n_trial){
-    if(n_subj<2){
-      stop("For arbitrary reasons, two is the smallest number of subjects")
-    }
-    set.seed(seed)
-    bind_cols(s = 1:(n_subj),
-              sample_n(f, size = n_subj/2, replace = T) %>% 
-                pivot_longer(1:2, names_to = "condition", values_to = "theta")) %>% 
-      mutate(y = lapply(theta, rbinom, n = n_trial, size = 1)) %>% 
-      unnest(y)
-    
-  }
+See the preregistration for a more detailed description of the study, but in short, the goal of the research was to test whether the use of a pronoun (they, he, no pronoun [control]) affected categorizations of faces as beyond the binary (i.e. not women or men). The main parameter of interest then, is the difference between the "they" condition and the he and control conditions. 
+
+The approach to power is inspired by the steps laid out by Kruschke (2018). Kruschke defines power as the probability of a study achieving it's goal. For typical frequentist studies, this involves excluding the null hypothesis at p <.05. For Bayesian analyses a wider range of possible goals are available. However, Kruschke recommends calibrating the sample size to achieve a certain precision, which is what we will be doing. As described in the preregistration, the goal precision of the study was to achieve credible intervals of 0.2 width or narrower on the probability scale. 
+
+Regardless of the goal, the approach is the same and involves the following steps:
+
+1. Postulate a hypothetical distribution of parameter values.
+2. Randomly sample a set of representative parameter values from that distribution.
+3. Simulate a number of samples based on the representative parameter values in 2.
+4. Apply the Bayes rule to each of the simulated samples to determine whether the goal was achieved.
+5. Repeat over all the samples and determine how often the goal was achieved. 
+
+### Preparation
+
+Steps 1 and 2 were carried out based on the data from a prior experiment. 330 participants participated in a similar experiment to what is described here and that data was fit to the following model, which included varying slopes for subjects and varying slopes and intercepts for targets, as well as fixed effects for pronoun condition and the personal variable gender binary beliefs. 
+
+$$
+\begin{aligned}
+\text{Beyond-binary}_{i} &\sim \mathrm{Bernoulli}(p) \\
+\text{logit}(p_i)&= \gamma_{pronoun[i]}+ \alpha_{subject[i]} + \gamma_{face[i],pronoun[i]}\\
+\gamma_{pronoun} &\sim \mathrm{Normal}(0,3),\: \text{for}\: pronoun =\text{hen, han, control}\\
+\alpha_{subject} &\sim \mathrm{Normal}(0, \sigma_{subject}) \\
+\begin{bmatrix}
+\gamma_{j, hen}\\\gamma_{j, han} \\\gamma_{j, control}
+\end{bmatrix}
+&\sim \mathrm{MVNormal}\Bigg(\begin{bmatrix} 0 \\ 0 \\0
+\end{bmatrix}, \Sigma _{face}\Bigg) \\
+\Sigma_{face} & =\textbf{S}_{\gamma}\textbf{R}_{\gamma}\textbf{S}_{\gamma}  \\
+\sigma_{subject} &\sim \mathrm{HalfCauchy}(3) \\
+\sigma_{\gamma[hen]},\sigma_{\gamma[han]},\sigma_{\gamma[control]}&\sim \mathrm{HalfCauchy}(3) \\
+\textbf{R} &\sim \mathrm{LKJcorr}(1) \\
+\end{aligned}
+$$
+
+The following code loads the prior data and fits it to the model. For convenience, I've included the fit in the file directory. To reproduce the analyses completely, place a `#` symbol before th line `file = "fit_multilevel_alt_m1"`
+
+```{r message=FALSE, warning=FALSE}
+#load and clean prior data
+d <- read_data()
+
+#fit data to model
+fit_prior_data <- brm(
+  resp ~0 + condition + essentialism_s + (1|id) + (0 + condition|face), data = d, family = bernoulli("logit"),
+  prior = prior,
+  cores = 4,
+  warmup = 2000, iter = 5000, 
+  file = "models/fit_multilevel_alt_m1",
+  control = list(adapt_delta = 0.99),
+  sample_prior = TRUE
+)
 
 ```
 
-Create a function to sample data from the "population"
+###Simulation and calculation
+
+To simplify, I made a function to carry out all the steps outlined above, `power_calculator()`. The function `get_hdis` and `fit_then_hdis`are additional convenience functions to simplify. The code itself is adapted from Kurz (2021). It goes through all the steps described above
 
 ```{r}
-
-n_subj = 10
-n_trial = 5
-n_sim = 5
-power_calculator <- function(model, n_subj, n_trial = 30, n_sim = 100 ) {
- # Begin by simulating a population based on an existing dataset
+power_calculator <- function(model, n_subj, n_trial = 30, n_sim = 100, filename ) {
+#1. Begin by simulating a population based on an existing dataset
    f <- 
     fitted(model,
            newdata = tibble(id = 0, 
@@ -82,8 +92,20 @@ power_calculator <- function(model, n_subj, n_trial = 30, n_sim = 100 ) {
     data.frame() %>% 
     set_names(c("han", "hen"))
 
-#Then sample values from that dataset, simulating running a single experiment
-#Run the analyses on the newly created dataset
+#2. simulate a single experiment from a set of population parameters
+sample_data <- function(seed, n_subj, n_trial){
+    if(n_subj<2){
+      stop("For arbitrary reasons, two is the smallest number of subjects")
+    }
+    set.seed(seed)
+    bind_cols(s = 1:(n_subj),
+              sample_n(f, size = n_subj/2, replace = T) %>% 
+                pivot_longer(1:2, names_to = "condition", values_to = "theta")) %>% 
+      mutate(y = lapply(theta, rbinom, n = n_trial, size = 1)) %>% 
+      unnest(y)}
+    
+   
+#3. Run the analyses on the newly created dataset
   fit_sim_pop <-
     brm(data = sample_data(1, n_subj, n_trial),
         family = bernoulli(link = logit),
@@ -95,21 +117,31 @@ power_calculator <- function(model, n_subj, n_trial = 30, n_sim = 100 ) {
         control = list(adapt_delta = .9)
     )
 
-#Repeat the proces many times
+#4. Repeat the process many times
+  
+  fit_then_hdis <- function(data, seed) {
+    
+    fit <- update(fit_sim_pop, 
+                  newdata = data, 
+                  seed = seed)
+    
+    get_hdi(fit)
+  }
+
   sims <-
     tibble(seed = 1:n_sim) %>% 
     mutate(data = map(seed, sample_data, n_subj = n_subj, n_trial = n_trial)) %>% 
     mutate(hdi = map2(data, seed, fit_then_hdis))
 
-#Determine how often the study targets were observed
+#5. Determine how often the study targets were observed
   sim_out <- sims %>% 
     unnest(hdi) %>% 
-    # here we determine whether we passed at the group level
     mutate(pass_rope_diff = diff.lower < -0.1 & diff.upper > 0.1,
-           pass_width_diff = (diff.upper -diff.lower) < .5,
+           pass_width_diff = (diff.upper -diff.lower) < .2,
            pass_rope_han = han.lower > -0.1 | han.upper < 0.1,
            pass_width_han = (han.upper -han.lower) < .2,
-           pass_width_hen = (hen.upper -hen.lower) < .5) 
+           pass_width_hen = (hen.upper -hen.lower) < .2) 
+saveRDS(sim_out, filename)
 return(sim_out)  
 #
 
@@ -118,65 +150,66 @@ return(sim_out)
 
 ```
 
-Running the simulation
+The last step in the process involves carrying this out over a number of potential sample sizes. The code below applies the function over a set of potential sample sizes. Note that due the simplification, the final sample would have be increased by one third. By default, all of the code is commented out, because the analyses itself is very time-consuming (>20 hours). To completely replicate my simulations, delete the # symbols in front all of the lines of code and run the code chunk. 
 
 ```{r Running sims, eval=FALSE, include=FALSE}
-power_50 <- power_calculator(fit_multilevel_alt_m1,  n_subj = 50)
-power_100 <- power_calculator(fit_multilevel_alt_m1, n_subj = 100)
-power_150 <- power_calculator(cat_multilevel_alt_m1, n_subj = 150)
-power_200 <- power_calculator(fit_multilevel_alt_m1, n_subj = 200)
-power_250 <- power_calculator(fit_multilevel_alt_m1, n_subj = 250)
 
-saveRDS(power_50, "sims/power50")
-  
+power_50 <- power_calculator(fit_prior_data, n_sim = 500,  n_subj = 50,  filename = "sims/power50.rds")
+#power_100 <- power_calculator(fit_prior_data, n_subj = 100, filename = "sims/power100.rds")
+#power_150 <- power_calculator(fit_prior_data, n_subj = 150, filename = "sims/power150.rds")
+#power_200 <- power_calculator(fit_prior_data, n_subj = 200, filename = "sims/power200.rds")
+#power_220 <- power_calculator(fit_prior_data, n_subj = 220, filename = "sims/power220.rds")
+#power_250 <- power_calculator(fit_prior_data, n_subj = 250, filename = "sims/power250.rds")
+
+power_50 <- readRDS("sims/power50.rds")
+power_100 <- readRDS("sims/power100.rds")
+power_150 <- readRDS("sims/power150.rds")
+power_200 <- readRDS("sims/power200.rds")
+power_220 <- readRDS("sims/power220.rds")
+power_250 <- readRDS("sims/power250.rds")
 
 ```
+The data are summarized in table 1. This shows that the minimum required number of participants is 310
 
-```{r}
+```{r Presenting as table}
 
 get_outs <- function(data) {
   outs <- tibble(
-              "N" = as.numeric(tail(data[[2]][[1]][,1], 1)), 
+              "N" = as.numeric(tail(data[[2]][[1]][,1], 1)*1.5), 
               "Power" = sum(data[, "pass_width_diff"])/100)
   return(outs)
 }
-
-powers
-
-get_outs(p2)
 
 powers <- tibble(
               "N"= NA,
               "Power" = NA)
 
-sims <- list(p2, power_50)
+sims <- list(power_50, power_100, power_150, power_200, power_250)
 
 for (i in sims){
   tmp <- get_outs(i)
   powers <- rbind(powers, tmp)
 }
 
-powers
+powers <- powers[-1,]
 
-
-```
-
-```{r turning this into a table}
-# Load libraries
-library(knitr)
 library(kableExtra)
-library(papaja)
-library(flextable)
 
-apa_table(
-  powers,
-  escape = TRUE,
-  col.names = c("N", "Power"),
-  align = c("l", "c"),
-  caption = "Estimated power based on N participants"
-  )
+powers %>% 
+  kable(caption = "Table 1.
+        \nPower by sample size",
+      booktabs = TRUE,
+      align = c("l", "c"),
+      label = "Table 1",
+      centering = F,
+      escape = T,
+      table.attr = "style='width:35%;'") %>% 
+  kable_classic(full_width= T, position  = "l", fixed_thead = T ) 
 
-flextable(powers) %>% 
-  set_caption("Estimated power based on N participants")
-  
+
+
 ```
+
+
+
+

@@ -1,0 +1,159 @@
+---
+title: "model test"
+author: "EvB"
+date: "12/21/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+$$
+\begin{aligned}
+categorization_{i} & \sim \mathrm{Poisson}(\lambda_{i}) \\
+\text{log}(\lambda_i) &= \alpha_{condition_[i]}+\beta_{condition[i]}*\text{essentialism}_{i} \\
+\alpha &\sim \mathrm{Normal(2, 1) \\
+\beta &\sim \mathrm{Normal(0, 0.5) \\
+\end{aligned}
+$$
+
+$$
+\begin{aligned}
+\text{categorization}_{i} & \sim \mathrm{Poisson}(\lambda_{i}) \\
+\text{log}(\lambda_i) &= \alpha_{condition_[i]}+\beta_{condition[i]}\text{BV}_{i} \\
+\alpha &\sim \mathrm{Normal}(2, 1) \\
+\beta &\sim \mathrm{Normal}(0, 0.5) \\
+\end{aligned}
+$$
+
+$$
+\begin{aligned}
+y_{i} &\sim \mathrm{Normal}(\mu_{i}, \sigma_{e}) \\
+\mu_{i} &= \alpha + \beta x_{i} \\
+\end{aligned}
+$$
+
+$$
+\begin{aligned}
+\text{categorization}_{i} &\sim \mathrm{Bernoulli}(p) \\
+\text{logit}(p_i)&= \alpha_{pronoun[i]}+ \alpha_{subject[i]} + \beta_{pronoun[i]}E+ \beta_{face[i],pronoun[i]}\\
+\alpha_{pronoun} &\sim \mathrm{Normal}(0,3),\: \text{for}\: pronoun =1,...,4\\
+\alpha_{subject} &\sim \mathrm{Normal}(0, \sigma_{subject}) \\
+\beta_{pronoun} & \sim \mathrm{Normal}(0,3),\: \text{for}\: pronoun =1,...,4\\
+\begin{bmatrix}
+\beta_{j,1}\\\beta_{j,2} \\\beta_{j,3}\\\beta_{j,3}
+\end{bmatrix}
+&\sim \mathrm{MVNormal}\Bigg(\begin{bmatrix} 0 \\ 0\\0\\0 \end{bmatrix}, \Sigma _{face}\Bigg) \\
+\Sigma_{face} & =\textbf{S}_{\beta[j]}\textbf{R}_{\beta[j]}\textbf{S}_{\beta[j]}  \\
+\sigma_{subject} &\sim \mathrm{HalfCauchy}(3) \\
+\sigma_{\gamma[1]},...,  \sigma_{\gamma[4]}&\sim \mathrm{HalfCauchy}(3) \\
+\textbf{R} &\sim \mathrm{LKJcorr}(2) \\
+\end{aligned}
+$$
+
+$$
+\begin{aligned}
+\text{categorization}_i & \sim \mathrm{Bernoulli}(p)\\
+\text{logit}(p_i)&= \alpha_{subject[i]}+\alpha_{face[i]} + \alpha_{cond[i]}+ \beta_{cond[i]}E\\
+\alpha_{subject} &\sim \mathrm{Normal}(0, \sigma_{subject})\\
+\alpha_{face} &\sim Normal(0, \sigma_{face})\\
+\beta_{cond} &\sim Normal(0,2)\\
+\sigma_{subject}&\sim HalfCauchy(3)\\
+\sigma_{face}&\sim HalfCauchy(3)\\
+\end{aligned}
+$$
+###Hypothessis 1 & 1###
+$$
+\begin{aligned}
+\text{Beyond-binary}_{i} &\sim \mathrm{Bernoulli}(p) \\
+\text{logit}(p_i)&= \gamma_{pronoun[i]}+ \alpha_{subject[i]}  + \beta GBB + \gamma_{face[i],pronoun[i]}\\
+\gamma_{pronoun} &\sim \mathrm{Normal}(0,3),\: \text{for}\: pronoun =\text{hen, han, control}\\
+\alpha_{subject} &\sim \mathrm{Normal}(0, \sigma_{subject}) \\
+\beta GBB & \sim \mathrm{Normal}(0,3)\\
+\begin{bmatrix}
+\gamma_{hen}\\\gamma_{han} \\\gamma_{control}
+\end{bmatrix}
+&\sim \mathrm{MVNormal}\Bigg(\begin{bmatrix} 0 \\ 0 \\0
+\end{bmatrix}, \Sigma _{face}\Bigg) \\
+\Sigma_{face} & =\textbf{S}_{\gamma}\textbf{R}_{\gamma}\textbf{S}_{\gamma}  \\
+\sigma_{subject} &\sim \mathrm{HalfCauchy}(3) \\
+\sigma_{\gamma[hen]},\sigma_{\gamma[han]},\sigma_{\gamma[control]}&\sim \mathrm{HalfCauchy}(3) \\
+\textbf{R} &\sim \mathrm{LKJcorr}(1) \\
+\end{aligned}
+$$
+
+###Model for hypothesis 3###
+
+$$
+\begin{aligned}
+\text{IDK}_{i} &\sim \mathrm{Bernoulli}(p) \\
+\text{logit}(p_i)&= \gamma_{pronoun[i]}+ \alpha_{subject[i]} + \gamma_{face[i],pronoun[i]}\\
+\gamma_{pronoun} &\sim \mathrm{Normal}(0,3),\: \text{for}\: pronoun =\text{hen, han, control}\\
+\alpha_{subject} &\sim \mathrm{Normal}(0, \sigma_{subject}) \\
+\begin{bmatrix}
+\gamma_{hen}\\\gamma_{han} \\\gamma_{control}
+\end{bmatrix}
+&\sim \mathrm{MVNormal}\Bigg(\begin{bmatrix} 0 \\ 0 \\0
+\end{bmatrix}, \Sigma _{face}\Bigg) \\
+\Sigma_{face} & =\textbf{S}_{\gamma}\textbf{R}_{\gamma}\textbf{S}_{\gamma}  \\
+\sigma_{subject} &\sim \mathrm{HalfCauchy}(3) \\
+\sigma_{\gamma[hen]},\sigma_{\gamma[han]},\sigma_{\gamma[control]}&\sim \mathrm{HalfCauchy}(3) \\
+\textbf{R} &\sim \mathrm{LKJcorr}(1) \\
+\end{aligned}
+$$
+
+$$
+\begin{aligned}
+\text{Man}_{i} &\sim \mathrm{Bernoulli}(p) \\
+\text{logit}(p_i)&= \gamma_{pronoun[i]}+ \alpha_{subject[i]} + \gamma_{face[i],pronoun[i]}\\
+\gamma_{pronoun} &\sim \mathrm{Normal}(0,3),\: \text{for}\: pronoun =\text{hen, han, control}\\
+\alpha_{subject} &\sim \mathrm{Normal}(0, \sigma_{subject}) \\
+\begin{bmatrix}
+\gamma_{hen}\\\gamma_{han} \\\gamma_{control}
+\end{bmatrix}
+&\sim \mathrm{MVNormal}\Bigg(\begin{bmatrix} 0 \\ 0 \\0
+\end{bmatrix}, \Sigma _{face}\Bigg) \\
+\Sigma_{face} & =\textbf{S}_{\gamma}\textbf{R}_{\gamma}\textbf{S}_{\gamma}  \\
+\sigma_{subject} &\sim \mathrm{HalfCauchy}(3) \\
+\sigma_{\gamma[hen]},\sigma_{\gamma[han]},\sigma_{\gamma[control]}&\sim \mathrm{HalfCauchy}(3) \\
+\textbf{R} &\sim \mathrm{LKJcorr}(1) \\
+\end{aligned}
+$$
+
+$$
+\begin{aligned}
+\text{Non-binary}_{i} &\sim \mathrm{Bernoulli}(p) \\
+\text{logit}(p_i)&= \gamma_{pronoun[i]}+ \alpha_{subject[i]} + \gamma_{face[i],pronoun[i]}\\
+\gamma_{pronoun} &\sim \mathrm{Normal}(0,3),\: \text{for}\: pronoun =\text{hen, han, control}\\
+\alpha_{subject} &\sim \mathrm{Normal}(0, \sigma_{subject}) \\
+\begin{bmatrix}
+\gamma_{hen}\\\gamma_{han} \\\gamma_{control}
+\end{bmatrix}
+&\sim \mathrm{MVNormal}\Bigg(\begin{bmatrix} 0 \\ 0 \\0
+\end{bmatrix}, \Sigma _{face}\Bigg) \\
+\Sigma_{face} & =\textbf{S}_{\gamma}\textbf{R}_{\gamma}\textbf{S}_{\gamma}  \\
+\sigma_{subject} &\sim \mathrm{HalfCauchy}(3) \\
+\sigma_{\gamma[hen]},\sigma_{\gamma[han]},\sigma_{\gamma[control]}&\sim \mathrm{HalfCauchy}(3) \\
+\textbf{R} &\sim \mathrm{LKJcorr}(1) \\
+\end{aligned}
+$$
+
+###Hypothessis sans GBB
+$$
+\begin{aligned}
+\text{Beyond-binary}_{i} &\sim \mathrm{Bernoulli}(p) \\
+\text{logit}(p_i)&= \gamma_{pronoun[i]}+ \alpha_{subject[i]} + \gamma_{face[i],pronoun[i]}\\
+\gamma_{pronoun} &\sim \mathrm{Normal}(0,3),\: \text{for}\: pronoun =\text{hen, han, control}\\
+\alpha_{subject} &\sim \mathrm{Normal}(0, \sigma_{subject}) \\
+\begin{bmatrix}
+\gamma_{hen}\\\gamma_{han} \\\gamma_{control}
+\end{bmatrix}
+&\sim \mathrm{MVNormal}\Bigg(\begin{bmatrix} 0 \\ 0 \\0
+\end{bmatrix}, \Sigma _{face}\Bigg) \\
+\Sigma_{face} & =\textbf{S}_{\gamma}\textbf{R}_{\gamma}\textbf{S}_{\gamma}  \\
+\sigma_{subject} &\sim \mathrm{HalfCauchy}(3) \\
+\sigma_{\gamma[hen]},\sigma_{\gamma[han]},\sigma_{\gamma[control]}&\sim \mathrm{HalfCauchy}(3) \\
+\textbf{R} &\sim \mathrm{LKJcorr}(1) \\
+\end{aligned}
+$$

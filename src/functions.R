@@ -106,3 +106,16 @@ analysis_non_par <- function(d){
   # Display output, rounded to 2 decimals
   round(mean_data, 2)
 }
+
+get_hdi <- function(fit) {
+  
+  fit %>% 
+    as_draws_df() %>% 
+    transmute(hen = inv_logit_scaled(b_conditionhen),
+              han = inv_logit_scaled(b_conditionhan)) %>% 
+    mutate(diff = hen-han) %>% 
+    # yields the highest-density *continuous* interval
+    mode_hdci() %>% 
+    select(contains(".lower")|contains(".upper")) 
+  
+}
